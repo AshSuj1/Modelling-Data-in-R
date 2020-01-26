@@ -1,0 +1,383 @@
+---
+title: "Modelling Data"
+author: "Ashwathy Sujathan"
+output:
+  word_document: default
+---
+
+```{r}
+
+```
+
+# Task A: Modelling - Classification
+
+## A.1
+
+Logistic regression is the technique that will be most appropriate when compared to linear regression. The first reason being this task could be thought of as a form of profiling as in we are discerning the similarities and differences between groups/cohorts. Logistic regression is also most appropriate where the response variable is a categorical variable, such is the case with "loan_status".It can be stated that the linear regression model is used more so for predictive tasks and where the variable is continuous.If the "linear model assumes that the probability p is a linear function of the regressors, while the logistic model assumes that the natural log of the odds p/(1-p) is a linear function of the regressors", then it can be assumed that the categorical response variable cannot necessarily be modelled as a linear function of predictors.
+
+
+
+```{r}
+#load xlsx package to read in xlsx file
+library(xlsx)
+
+# load the data
+test_loan <- read.xlsx(file.choose(), 1, header = T)
+train_loan <- read.csv(file.choose())
+
+# print summaries of the data
+summary(test_loan)
+summary(train_loan)
+
+
+```
+
+## A.2
+
+Changing the loan grade status into a numeric variable will not change or improve the model as the variable remains discrete, it can only take the form of few selected values. However a more appropriate change maybe to use as.factor as factors in R "are stored as a vector of integer values with a corresponding set of character values to use when the factor is displayed", hence the integrity of the original structure of the data remains.
+
+```{r}
+
+# change the structure of some variables 
+train_loan$term <- as.factor(train_loan$term)
+train_loan$grade <- as.factor(train_loan$grade)
+train_loan$home_ownership <- as.factor(train_loan$home_ownership)
+train_loan$verification_status <- as.factor(train_loan$verification_status)
+train_loan$loan_status <- as.factor(train_loan$loan_status)
+
+# print structure of all variables
+str(train_loan)
+```
+
+
+## A.3
+
+The estimate for each of the coefficients indicates the increase/decrease in the log(odds) that a particular coefficient has on loan status. For example with loan grade B; 
+
+loan_status = 3.600e+00 + 3.698e-01 * the loan grade is B
+
+The standard error indicates the measure of variability for individual regression coefficients using the Wald test, as in loan grade is B has no association with loan status or that there exists a relationship can be indicated by using the standard error.
+
+There are more rows in the coefficients table because of "dummy variables". Categorical variables have been split to be represented as a single variable.
+ 
+
+```{r}
+# train a logistic model
+mod <- glm(loan_status ~ ., family = binomial(link = "logit"),
+            data = train_loan)
+
+summary(mod)
+```
+
+## A.4
+
+
+```{r} 
+# generate probabilities
+prob <- predict(mod, test_loan[, -9], type = 'response')
+
+# generatelog odd values
+logit_values <- predict(mod, test_loan, type = 'link')
+
+# cutoff point - part answer to A.5
+modtest_cutoff <- ifelse(prob>0.5, "Fully Paid", "Charged off")
+
+#  determining whether these are probabilities that the loan is paid (loan status= "Fully Paid") or that the loan is defaulted on (loan status="Charged Off")
+
+head(data.frame("Predicted Class"= modtest_cutoff,
+                "Actual Class"= test_loan$loan_status,
+                "Prob for Fully paid(success)" = prob,
+                "Log odds" = logit_values,
+                test_loan, check.names = F))
+
+
+
+```
+
+## A.5
+
+The porportion of data that is correctly predicted by the model is 85%.
+
+```{r}
+table("Actual value"<- test_loan$loan_status, "Predicted value" <- modtest_cutoff)
+
+mean(modtest_cutoff==test_loan$loan_status)
+mean(modtest_cutoff!=test_loan$loan_status)
+
+```
+
+# Task B: Modelling - Regression 
+
+## B.1
+
+All the '?' values have been used in the horse power column. For these missing values the choice of action is to remove these rows from the data frame.
+
+```{r}
+
+# load the data
+
+# clead data
+mpg_trainc <- read.csv(file.choose())
+# test data
+mpg_test <- read.csv(file.choose())
+# unclean data
+mpg_traind <- read.csv(file.choose())
+
+# number of rows that have missing values is equal to 6
+nrow(mpg_traind[mpg_traind$horsepower=='?',])
+
+# remove rows
+mpg_traind <- mpg_traind[mpg_traind$horsepower!='?', ]
+
+# number of rows that have missing values is equal to 0
+nrow(mpg_traind[mpg_traind$horsepower=='?',])
+
+
+```
+
+## B.2
+
+According to the plots below of the variables that appear to have a relationship with mpg are displacement, horsepower, weight, acceleration and cylinders hence they will be included for the model.
+
+```{r}
+# Pair plot mpg vs displacement
+plot(mpg_trainc$displacement,mpg_trainc$mpg)
+# Pair plot mpg vs horsepower
+plot(mpg_trainc$horsepower,mpg_trainc$mpg)
+# Pair plot mpg vs weight
+plot(mpg_trainc$weight,mpg_trainc$mpg)
+# Pair plot mpg vs acceleration
+plot(mpg_trainc$acceleration,mpg_trainc$mpg)
+# Pair plot mpg vs cylinders
+plot(mpg_trainc$cylinders,mpg_trainc$mpg)
+
+# Pair plot mpg vs model.year
+plot(mpg_trainc$model.year,mpg_trainc$mpg)
+# Pair plot mpg vs origin
+plot(mpg_trainc$origin,mpg_trainc$mpg)
+# Pair plot mpg vs car.name
+plot(mpg_trainc$car.name,mpg_trainc$mpg)
+
+
+# Pair plot all variables the first row is the only one that is relevant
+plot(mpg_trainc)
+```
+```{r}
+# structure of the dataframe
+str(mpg_trainc)
+
+# make a copy of the dataframe
+mpgtrain <- mpg_trainc
+
+# remove the irrelevant variables
+mpg_trainc <- mpg_trainc[, -c(7, 8, 9)]
+
+# change some of the variables to as.factor
+mpg_trainc$cylinders <- as.factor(mpg_trainc$cylinders)
+mpg_test$cylinders <- as.factor(mpg_test$cylinders)
+```
+
+
+## B.3
+
+R-squared is a measure of how close the data are to the regression line, the rsquared value represents the percentage of the response variable variation that is explained by a linear model. In this case the indication is that 74.21% of the variability in the response variable can be explained by the below linear model, which means that the model created is fairly good at fitting the data.
+
+To explain the p-value we must first explain the F-test of overall significance. The test compares whether the fit of the intercept-only model and the model created below are equal or whether the fit of the intercept-only model is siginificatly reduced compared to the model below. If the P value for the F-test of overall significance test is less than your significance level, you can reject the null-hypothesis and conclude that your model provides a better fit than the intercept-only model which is the case for the below p-value: < 2.2e-16.
+
+
+
+```{r}
+# build the linear regression model
+modb <- lm(mpg ~ ., mpg_trainc)
+
+summary(modb)
+
+```
+
+## B.4
+
+```{r}
+# test the model
+modtest=predict(modb, mpg_test[, -1])
+# calculate the residuals
+Residual <- mpg_test$mpg - modtest
+
+# MSE function
+mse <- function(model){mean(model^2)}
+
+# MEAN STANDARD ERROR = 11.3608
+mse(Residual)
+
+# build a data frame to see how the model works, by comparing the actual values, predicted values from the model and the residual values
+head(data.frame("Actual Values"=mpg_test$mpg,
+                "Predicted Values"=modtest, Residual))
+
+
+
+
+```
+
+## B.5
+
+Weight divided by horsepower is indicative of acceleration power whihc can in turn influence miles per gallon, for this reason this predictor was added to the dataframe and then a model was built around it. The expectation is that the data will fit even better around the regression line.
+
+According to the Mean standard error of the test we can see that it has actually become larger when compared to the MSE of the test from our first model meaning that the performance is not as good as the first model.
+
+```{r}
+
+# weight to horsepower ratio predictor
+weight_hp <- mpg_trainc$weight / mpg_trainc$horsepower
+
+# new predictor is added to the data frame
+mpg_trainc <- cbind(mpg_trainc, weight_hp)
+
+# new model
+modb <- lm(mpg ~ ., mpg_trainc)
+
+summary(modb)
+
+# weight to horsepower ratio predictor for the test dataframe
+weight_hp <- mpg_test$weight / mpg_test$horsepower
+# new predictor is added to the data frame
+mpg_test <- cbind(mpg_test, weight_hp)
+
+# test the model, calculate residuals
+modtest=predict(modb, mpg_test[, -1])
+Residual <- mpg_test$mpg - modtest
+
+# MEAN STANDARD ERROR = 13.77596
+mse(Residual)
+
+# look at the first few actual mpg values and corresponding predicted values
+head(data.frame("Actual Values"=mpg_test$mpg,
+                "Predicted Values"=modtest, Residual))
+
+
+```
+
+
+# Task C: Sampling 
+
+## C.1
+
+Use rejection sampling.
+
+```{r}
+
+# target function
+p.target<-function(x)
+{
+  2*exp(-2*x)
+}
+
+# accept function
+p.accept<-function(x)
+{
+  p.target(x)*( 2*exp(-2*0))**-1
+}
+
+# seed value
+g_seed=0
+
+# uniform distribution
+my.rand<-function(seed=g_seed)
+{
+  retval=(38333*seed+38351)%%(2**16)
+  g_seed<<-retval
+  return(retval)
+}
+
+# runif function
+my.runif<-function(seed=g_seed)
+{
+  return(my.rand(seed)/(2**16))
+}
+
+# a vector
+vect <- 0
+
+# build a function to sample 200 values using the rejection sampling method and store them in a vector, also print the histogram
+
+func1<- function(vec){
+  var1 <- my.runif(10)
+  Rvar1 <- var1
+  for (i in 1:461) {
+    prob_val <- p.accept(Rvar1)
+    Rvar2 <- my.runif()
+    if (Rvar2 < prob_val){
+    vec <- c(vec, Rvar1)
+    Rvar1 <- my.runif()
+    }else { 
+      Rvar1 <- my.runif()
+      vec <- vec
+    }
+  }
+  vec <- vec[-1]
+  print(vec)
+  hist(vec, breaks = 10, main="Histogram for Samples", xlab = "samples", border="blue", col="green")
+}
+
+func1(vect)
+
+```
+
+## C.2
+
+1. Joint Distribution
+
+$P(W, S, R, C) = P(W|S,R)P(S|C)P(R|C)P(C)$
+
+2. If two variables in a Bayesian network have no common ancestors and if one is not the ancestor of another they are said to be independent hence in this model no variables are independent of rain. Rain is an ancestor of Cloudy, Rain and Sprinkler have a common ancestor in Cloudy and Wetgrass is an ancestor of Rain.
+
+
+## C.3
+
+```{r}
+# probability tables
+cpt_c = c(0.5, 0.5)
+cpt_s_given_c = matrix(c(0.5, 0.5, 0.9, 0.1), 2, 2, byrow = F)
+cpt_r_given_c = matrix(c(0.8, 0.2, 0.2, 0.8), 2, 2, byrow = F)
+cpt_w_given_sr = matrix(c(1, 0.1, 0.1, 0.01, 0, 0.9, 0.9, 0.99), 2, 4, byrow = T)
+
+
+# function p_s_given_crw which return the conditional probability of the value of S given W,C,R.
+p_s_given_crw <- function(S, C, R, W){
+            if ((S == TRUE)&(C == FALSE)&(R == TRUE)&(W == FALSE)){prob = cpt_s_given_c[2,1] * cpt_r_given_c[2,1] * cpt_w_given_sr[1,4] * cpt_c[1] / (cpt_s_given_c[2,1] * cpt_r_given_c[2,1] * cpt_w_given_sr[1,4] * cpt_c[1] + cpt_s_given_c[1,1] * cpt_r_given_c[2,1] * cpt_w_given_sr[1,4] * cpt_c[1])
+                                                                   print(prob)}
+            else if ((S == TRUE)&(C == TRUE)&(R == TRUE)&(W == TRUE)){prob = cpt_s_given_c[2,2] * cpt_r_given_c[2,2] * cpt_w_given_sr[2,4] * cpt_c[2] / (cpt_s_given_c[2,2] * cpt_r_given_c[2,2] * cpt_w_given_sr[2,4] * cpt_c[2] + cpt_s_given_c[1,2] * cpt_r_given_c[2,2] * cpt_w_given_sr[2,4] * cpt_c[2])
+                                                                    print(prob)}
+            else if ((S == TRUE)&(C == FALSE)&(R == FALSE)&(W == FALSE)){prob = cpt_s_given_c[2,1] * cpt_r_given_c[1,1] * cpt_w_given_sr[1,2] * cpt_c[1] / (cpt_s_given_c[2,1] * cpt_r_given_c[1,1] * cpt_w_given_sr[1,2] * cpt_c[1] + cpt_s_given_c[1,1] * cpt_r_given_c[1,1] * cpt_w_given_sr[1,2] * cpt_c[1])
+                                                                    print(prob)}
+            else if ((S == TRUE)&(C == TRUE)&(R == TRUE)&(W == FALSE)){prob = cpt_s_given_c[2,2] * cpt_r_given_c[2,2] * cpt_w_given_sr[1,4] * cpt_c[2] / (cpt_s_given_c[2,2] * cpt_r_given_c[2,2] * cpt_w_given_sr[1,4] * cpt_c[2] + cpt_s_given_c[1,2] * cpt_r_given_c[2,2] * cpt_w_given_sr[1,4] * cpt_c[2])
+                                                                    print(prob)}
+            else if ((S == TRUE)&(C == TRUE)&(R == FALSE)&(W == FALSE)){prob = cpt_s_given_c[2,2] * cpt_r_given_c[1,2] * cpt_w_given_sr[1,2] * cpt_c[2] / (cpt_s_given_c[2,2] * cpt_r_given_c[1,2] * cpt_w_given_sr[1,2] * cpt_c[2] + cpt_s_given_c[1,2] * cpt_r_given_c[1,2] * cpt_w_given_sr[1,2] * cpt_c[2])
+                                                                    print(prob)}
+            else if ((S == TRUE)&(C == FALSE)&(R == TRUE)&(W == TRUE)){prob = cpt_s_given_c[2,1] * cpt_r_given_c[2,1] * cpt_w_given_sr[2,4] * cpt_c[1] / (cpt_s_given_c[2,1] * cpt_r_given_c[2,1] * cpt_w_given_sr[2,4] * cpt_c[1] + cpt_s_given_c[1,1] * cpt_r_given_c[2,1] * cpt_w_given_sr[2,4] * cpt_c[1])
+                                                                   print(prob)}
+            else if ((S == TRUE)&(C == FALSE)&(R == FALSE)&(W == TRUE)){prob = cpt_s_given_c[2,1] * cpt_r_given_c[1,1] * cpt_w_given_sr[2,2] * cpt_c[2] / (cpt_s_given_c[2,1] * cpt_r_given_c[1,1] * cpt_w_given_sr[2,2] * cpt_c[2] + cpt_s_given_c[1,1] * cpt_r_given_c[1,1] * cpt_w_given_sr[2,2] * cpt_c[2])
+                                                                    print(prob)}
+            else if ((S == TRUE)&(C == TRUE)&(R == FALSE)&(W == TRUE)){prob = cpt_s_given_c[2,2] * cpt_r_given_c[1,2] * cpt_w_given_sr[2,2] * cpt_c[2] / (cpt_s_given_c[2,2] * cpt_r_given_c[1,2] * cpt_w_given_sr[2,2] * cpt_c[2] + cpt_s_given_c[1,2] * cpt_r_given_c[1,2] * cpt_w_given_sr[2,2] * cpt_c[2])
+                                                                    print(prob)}
+}
+
+
+# calculate p(S = T|C = F, R = T, W = F)
+p_s_given_crw(TRUE,FALSE,TRUE,FALSE)
+```
+
+
+## C.4
+
+The first step is to initialise the variables: $C$ to $T$ and $W$ to $T$ all the other variables are assigned randomly. This first set of variables will be called $C_0$,$W_0$, $R_0$, $S_0$. We then generate a sequence $(C_0,W_0,R_0, S_0),(C_1,W_1, R_1, S_1),\dots$ of variables where $C_0=C_1=\dots=T$, by going through the variables in sequence repeatedly sampling:
+$S_{n+1}$ from $p(S|T,T,R_n)$
+$R_{n+1}$ from $p(R|T,T,S_n)$
+
+This forms a Markov chain which converges to the stationary distribution which is the joint distribution conditioned on the wet grass being $T$ and cloudy being $T$. A large number of samples are generated. Discard the first 1000 samples (the burn in) and then take every $n$ or more typically 100th sample after that.
+
+
+
+```{r}
+
+```
+
+
